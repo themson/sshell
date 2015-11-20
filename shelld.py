@@ -145,7 +145,7 @@ class SShell(Daemon):
     HOST = 'localhost'
     CERT_HASH = 'f146e9f45d116241e0dabf1cd25905fa28d16f53'
     PREAMBLE = '1010101010101010101010101010101010101010101010101010101010101011'
-    EXPIRE = '2015-11-24'
+    EXPIRE = '2016-01-01'  # yyyy-mm-dd
     SLEEPMAX = 3600
 
     def __init__(self, pid_file, verify=False):
