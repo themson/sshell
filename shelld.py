@@ -156,7 +156,7 @@ class SShell(Daemon):
         self.verify = verify
 
     @staticmethod
-    def _exec_timeout(commands, timeout_sec=10):
+    def _exec_timeout(commands, timeout_sec=60):
         output = ' '
         kill_process = lambda p: os.killpg(pgid, signal.SIGTERM)  # kill process group
         process = subprocess.Popen(commands, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
