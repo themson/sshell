@@ -3,12 +3,22 @@ from __future__ import print_function
 import socket
 import ssl
 import struct
+import signal
+import sys
 # to get cert use
 # cert = ssl_sock.getpeercert(binary_form=True)
 # print(hashlib.sha1(cert).hexdigest())
 PORT = 443
 HOST = 'localhost'
 PREAMBLE = '1010101010101010101010101010101010101010101010101010101010101011'
+
+
+# ---------- SIGNALS -------------
+def handle_ctrl_c(signum, frame):
+    """Gracefully catch sigint"""
+    print("\n\nInterrupt Caught: shutting down")
+    sys.exit(signum)
+# --------------------------------
 
 
 def check_sleep(command):
@@ -83,6 +93,7 @@ def shutdown_connection(conn_stream):
 
 
 def main():
+    signal.signal(signal.SIGINT, handle_ctrl_c)
     handle_up = True
     handler_sock = bind_listener()
     while handle_up is True:
